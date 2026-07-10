@@ -59,6 +59,7 @@ Token Token_stream::get()
     case '-':
     case '*':
     case '/':
+    case '%':
         return Token{ch};
     case '.':
     case '0':
@@ -93,23 +94,26 @@ double expression(); // forward declaration
 
 double primary()
 {
-    Token t = get_token();
+    Token t = ts.get();
     switch (t.kind)
     {
-    case '(': // handle '(' expression ')'
+    case '(': // handle ’(’ expression ’)’
     {
         double d = expression();
-        t = get_token();
+        t = ts.get();
         if (t.kind != ')')
             error("')' expected");
         return d;
     }
-    case '8':           // we use '8' to represent a number
-        return t.value; // return the number's value
+    case '8':           // we use ’8’ to represent a number
+        return t.value; // retur n the number’s value
+    case '-':
+        return - primary();
+    case '+':
+        return primary();
     default:
-        error("primary expected");
+        error("primar y expected");
     }
-
 }
 
 double term()
@@ -130,6 +134,15 @@ double term()
             if (d == 0)
                 error("divide by zero");
             left /= d;
+            t = ts.get();
+            break;
+        }
+        case '%':
+        {
+            double d = primary();
+            if (d == 0)
+                error("%:divide by zero");
+            left = fmod(left, d);
             t = ts.get();
             break;
         }
@@ -166,18 +179,18 @@ double expression()
 int main()
 try
 {
-    double val = 0; // version 3: ’q’ and ’;’ added
     while (cin)
     {
+        cout << "> ";
         Token t = ts.get();
-        if (t.kind == 'q') // ’q’ for ‘‘quit’’
-            break;
-        if (t.kind == ';') // ’;’ for ‘‘pr int now’’
-            cout << "=" << val << '\n';
-        else
-            ts.putback(t);
-        val = expression();
+        while (t.kind == ';')
+            t = ts.get(); // eat ’;’
+        if (t.kind == 'q')
+            return 0;
+        ts.putback(t);
+        cout << "= " << expression() << '\n';
     }
+    return 0;
 }
 catch (exception &e)
 {
