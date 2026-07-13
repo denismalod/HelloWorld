@@ -10,7 +10,9 @@ constexpr char quit = 'q';
 constexpr char print = ';';
 constexpr string_view prompt = "> ";
 constexpr string_view result = "= ";
-
+const char name = 'a';        // name token
+const char let = 'L';         // declaration token
+const string declkey = "let"; // declaration keyword
 
 // simple error reporting helper
 void error(const std::string &msg)
@@ -18,14 +20,25 @@ void error(const std::string &msg)
     throw std::runtime_error(msg);
 }
 
+class Variable
+{
+public:
+    string name;
+    double value;
+};
+
+vector<Variable> var_table;
 
 class Token
 {
-    public:
-    char kind;                                     // what kind of token
-    double value;                                  // for numbers: a value
-    Token(char k) : kind{k}, value{0.0} {}         // construct from one value
-    Token(char k, double v) : kind{k}, value{v} {} // construct from two values
+public:
+    char kind;
+    double value;
+    string name;
+    Token() : kind{0} {}                                 // default constructor
+    Token(char ch) : kind{ch} {}                         // initialize kind with ch
+    Token(char ch, double val) : kind{ch}, value{val} {} // initialize kind and value
+    Token(char ch, string n) : kind{ch}, name{n} {}      // initialize kind and name
 };
 
 class Token_stream
@@ -88,6 +101,15 @@ Token Token_stream::get()
         return Token{'8', val};
     }
     default:
+        if (isalpha(ch))
+        {
+            cin.putback(ch);
+            string s;
+            cin >> s;
+            if (s == declkey)
+                return Token{let}; // declaration keyword
+            return Token{name, s};
+        }
         error("Bad token");
     }
 }
@@ -206,6 +228,51 @@ double expression()
     }
 }
 
+bool is_declared(string var)
+// is var already in var_table?
+{
+    for (const Variable &v : var_table)
+        if (v.name == var)
+            return true;
+    return false;
+}
+
+double define_name(string var, double val)
+// add {var,val} to var_table
+{
+    if (is_declared(var))
+        error(" declared twice");
+    var_table.push_back(Variable{var, val});
+    return val;
+}
+
+double declaration()
+// assume we have seen "let’’
+// handle: name = expression
+// declare a var iable called "name’’ with the initial value "expression’’
+{
+    Token t = ts.get();
+    if (t.kind != name)
+        error("name expected in declaration");
+    Token t2 = ts.get();
+    if (t2.kind != '=')
+        error("= missing in declaration of ", t.name);
+    define_name(t.name, d);
+    return d;
+}
+
+double statement()
+{
+    Token t = ts.get();
+    switch (t.kind)
+    {
+    case let:
+        return declaration();
+    default:
+        ts.putback(t);
+        return expression();
+    }
+}
 void calculate()
 {
     while (cin)
@@ -218,7 +285,7 @@ void calculate()
             if (t.kind == quit)
                 return;
             ts.putback(t);
-            cout << result << expression() << '\n';
+            cout << result << statement() << '\n';
         }
         catch (runtime_error &e)
         {
