@@ -1,9 +1,16 @@
 #include <iostream>
 #include <vector>
-#include <string>
+#include <string_view>
 #include <stdexcept>
+#include <cmath>
 
 using namespace std;
+
+constexpr char quit = 'q';
+constexpr char print = ';';
+constexpr string_view prompt = "> ";
+constexpr string_view result = "= ";
+
 
 // simple error reporting helper
 void error(const std::string &msg)
@@ -11,9 +18,10 @@ void error(const std::string &msg)
     throw std::runtime_error(msg);
 }
 
+
 class Token
 {
-public:
+    public:
     char kind;                                     // what kind of token
     double value;                                  // for numbers: a value
     Token(char k) : kind{k}, value{0.0} {}         // construct from one value
@@ -22,10 +30,11 @@ public:
 
 class Token_stream
 {
-public:
+    public:
     Token get();           // get a Token
     void putback(Token t); // put a Token back
-private:
+    void ignore(char c);   // discard tokens up to and including a c
+    private:
     bool full{false};  // is there a Token in the buffer?
     Token buffer{'0'}; // where putback() stores a Token
 };
@@ -33,7 +42,7 @@ private:
 void Token_stream::putback(Token t)
 {
     if (full)
-        error("putback() into a full buffer");
+    error("putback() into a full buffer");
     buffer = t;
     full = true;
 }
@@ -51,16 +60,16 @@ Token Token_stream::get()
 
     switch (ch)
     {
-    case ';': // for "print"
-    case 'q': // for "quit"
-    case '(':
-    case ')':
-    case '+':
+        case ';': // for "print"
+        case 'q': // for "quit"
+        case '(':
+        case ')':
+        case '+':
     case '-':
     case '*':
     case '/':
     case '%':
-        return Token{ch};
+    return Token{ch};
     case '.':
     case '0':
     case '1':
@@ -83,7 +92,28 @@ Token Token_stream::get()
     }
 }
 
+void Token_stream::ignore(char c)
+// c represents the kind of Token
+{
+    if (full && c == buffer.kind)
+    { // first look in buffer
+        full = false;
+        return;
+    }
+    full = false;
+    // now search input:
+    char ch = 0;
+    while (cin >> ch)
+    if (ch == c)
+    return;
+}
+
 Token_stream ts; // global Token_stream object
+
+void clean_up_mess() // naive
+{
+    ts.ignore(print);
+}
 
 Token get_token()
 {
@@ -108,7 +138,7 @@ double primary()
     case '8':           // we use ’8’ to represent a number
         return t.value; // retur n the number’s value
     case '-':
-        return - primary();
+        return -primary();
     case '+':
         return primary();
     default:
@@ -176,23 +206,34 @@ double expression()
     }
 }
 
+void calculate()
+{
+    while (cin)
+        try
+        {
+            cout << prompt;
+            Token t = ts.get();
+            while (t.kind == print)
+                t = ts.get(); // first discard all "prints"
+            if (t.kind == quit)
+                return;
+            ts.putback(t);
+            cout << result << expression() << '\n';
+        }
+        catch (runtime_error &e)
+        {
+            cerr << e.what() << '\n'; // wr ite error message
+            clean_up_mess();
+        }
+}
+
 int main()
 try
 {
-    while (cin)
-    {
-        cout << "> ";
-        Token t = ts.get();
-        while (t.kind == ';')
-            t = ts.get(); // eat ’;’
-        if (t.kind == 'q')
-            return 0;
-        ts.putback(t);
-        cout << "= " << expression() << '\n';
-    }
+    calculate();
     return 0;
 }
-catch (exception &e)
+catch (runtime_error &e)
 {
     cerr << e.what() << '\n';
     return 1;
