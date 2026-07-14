@@ -34,6 +34,27 @@ public:
 
 vector<Variable> var_table;
 
+double get_value(string s)
+// return the value of the Variable named s
+{
+    for (const Variable &v : var_table)
+        if (v.name == s)
+            return v.value;
+    error("tr ying to read undefined variable ", s);
+}
+
+void set_value(string s, double d)
+// set the Var iable named s to d
+{
+    for (Variable &v : var_table)
+        if (v.name == s)
+        {
+            v.value = d;
+            return;
+        }
+    error("trying to write undefined variable ", s);
+}
+
 class Token
 {
 public:
@@ -171,8 +192,15 @@ double primary()
         return -primary();
     case '+':
         return primary();
+    case name:
+    {
+        for (const Variable &v : var_table)
+            if (v.name == t.name)
+                return v.value;
+        error("unknown variable");
+    }
     default:
-        error("primar y expected");
+        error("primary expected");
     }
 }
 
@@ -306,6 +334,8 @@ void calculate()
 int main()
 try
 {
+    define_name("pi", 3.1415926535);
+    define_name("e", 2.7182818284);
     calculate();
     return 0;
 }
