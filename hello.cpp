@@ -20,6 +20,11 @@ void error(const std::string &msg)
     throw std::runtime_error(msg);
 }
 
+void error(const std::string &msg1, const std::string &msg2)
+{
+    throw std::runtime_error(msg1 + msg2);
+}
+
 class Variable
 {
 public:
@@ -82,6 +87,7 @@ Token Token_stream::get()
     case '*':
     case '/':
     case '%':
+    case '=':
     return Token{ch};
     case '.':
     case '0':
@@ -241,7 +247,7 @@ double define_name(string var, double val)
 // add {var,val} to var_table
 {
     if (is_declared(var))
-        error(" declared twice");
+        error(var, " declared twice");
     var_table.push_back(Variable{var, val});
     return val;
 }
@@ -257,6 +263,7 @@ double declaration()
     Token t2 = ts.get();
     if (t2.kind != '=')
         error("= missing in declaration of ", t.name);
+    double d = expression();
     define_name(t.name, d);
     return d;
 }
